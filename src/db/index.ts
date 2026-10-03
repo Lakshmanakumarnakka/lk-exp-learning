@@ -11,18 +11,30 @@ function createDb(): NodePgDatabase {
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required to query the database");
   }
+
   const pool =
     globalForDb.__arenaNextJsPostgresqlPool ??
     new Pool({ connectionString: databaseUrl });
+
   if (process.env.NODE_ENV !== "production") {
     globalForDb.__arenaNextJsPostgresqlPool = pool;
   }
+
   return drizzle(pool);
 }
 
 function getDb(): NodePgDatabase {
   if (!globalForDb.__arenaNextJsPostgresqlDb) {
-    globalForDb.__arenaNextJsPostgresqlDb = createDb();
+    try {
+      globalForDb.__arenaNextJsPostgresqlDb = createDb();
+    } catch (error) {
+      const fallback = new Proxy({} as NodePgDatabase, {
+        get() {
+          throw error;
+        },
+      });
+      globalForDb.__arenaNextJsPostgresqlDb = fallback as NodePgDatabase;
+    }
   }
   return globalForDb.__arenaNextJsPostgresqlDb;
 }

@@ -8,7 +8,7 @@ function dayOffset(offset: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-const SEED: NewChallenge[] = [
+export const SEED: NewChallenge[] = [
   {
     slug: "two-sum-sorted",
     title: "Two Sum, Sorted",
@@ -441,13 +441,21 @@ let seeded = false;
 
 export async function ensureSeeded() {
   if (seeded) return;
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(challenges);
-  if ((row?.count ?? 0) > 0) {
-    seeded = true;
-    return;
+
+  try {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(challenges);
+
+    if ((row?.count ?? 0) > 0) {
+      seeded = true;
+      return;
+    }
+
+    await db.insert(challenges).values(SEED);
+  } catch {
+    // The app can still render a static fallback when Postgres is unavailable.
   }
-  await db.insert(challenges).values(SEED);
+
   seeded = true;
 }
